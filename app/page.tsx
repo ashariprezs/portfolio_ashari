@@ -232,7 +232,7 @@ export default function App() {
       {/* Navigation */}
       <nav className="fixed w-full z-50 pt-3 px-3 md:px-12 pointer-events-none">
         <div className="max-w-7xl mx-auto flex justify-between items-center bg-white/80 backdrop-blur-xl border border-slate-200/60 p-4 px-8 rounded-full shadow-lg pointer-events-auto">
-          <div className="font-black text-xl tracking-tighter">AS<span className="text-green-600">.</span></div>
+          <div className="font-black text-xl tracking-tighter"><a href="#hero">AS</a><span className="text-green-600">.</span></div>
           
           <div className="hidden md:flex gap-8 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
             <a href="#about" className="hover:text-slate-900 transition-colors">{t.nav_about}</a>
@@ -254,7 +254,7 @@ export default function App() {
       </nav>
 
       {/* Hero Section */}
-      <header className="min-h-screen flex items-center justify-center pt-20 px-6 md:px-10 overflow-hidden relative" style={{ background: 'radial-gradient(circle at center, #fff7ed 0%, #ffffff 70%)' }}>
+      <header id="hero" className="min-h-screen flex items-center justify-center pt-20 px-6 md:px-10 overflow-hidden relative" style={{ background: 'radial-gradient(circle at center, #fff7ed 0%, #ffffff 70%)' }}>
         <div className="max-w-7xl mx-auto grid md:grid-cols-12 gap-8 items-center w-full relative z-10">
           <div className="md:col-span-7">
             <Reveal direction="right">
