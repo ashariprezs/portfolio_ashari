@@ -35,7 +35,7 @@ const LinkedinIcon = () => (
 // Custom Hook untuk animasi scroll reveal
 const useScrollReveal = () => {
   const [isVisible, setIsVisible] = useState(false);
-  const domRef = useRef();
+  const domRef = useRef<HTMLDivElement>(null);;
 
   useEffect(() => {
     const observer = new IntersectionObserver(entries => {
@@ -58,10 +58,17 @@ const useScrollReveal = () => {
   return [domRef, isVisible];
 };
 
-// Komponen Pembungkus Animasi
-const Reveal = ({ children, delay = 0, direction = 'up' }) => {
+
+
+type RevealProps = {
+  children: React.ReactNode;
+  delay?: number;
+  direction?: 'up' | 'down' | 'left' | 'right';
+};
+
+const Reveal = ({ children, delay = 0, direction = 'up' }: RevealProps) => {
   const [ref, isVisible] = useScrollReveal();
-  
+
   const getTransform = () => {
     if (direction === 'up') return isVisible ? 'translateY(0)' : 'translateY(30px)';
     if (direction === 'down') return isVisible ? 'translateY(0)' : 'translateY(-30px)';
@@ -72,7 +79,7 @@ const Reveal = ({ children, delay = 0, direction = 'up' }) => {
 
   return (
     <div
-      ref={ref}
+      ref={ref as React.RefObject<HTMLDivElement>}
       style={{
         opacity: isVisible ? 1 : 0,
         transform: getTransform(),
@@ -82,7 +89,7 @@ const Reveal = ({ children, delay = 0, direction = 'up' }) => {
       {children}
     </div>
   );
-};
+}
 
 // Data i18n - English as Primary
 const i18n = {
@@ -97,25 +104,25 @@ const i18n = {
     stat_1: "Core Specialty",
     stat_2: "Main Controller",
     stat_3: "Communication",
-    stat_4: "System Expert",
+    stat_4: "Operating System",
     about_title: "Skills & Philosophy",
     about_desc: "Focused on developing reliable end-to-end IoT solutions, from circuit design to real-time data integration for smarter decision making.",
-    edu_desc: "Academic focus on Embedded Systems and IoT. Active in Wireless Sensor Networks (WSN) research.",
+    edu_desc: "GPA: 3.88/4.00. PM2.5 monitoring using IoT device for Final Project.",
     project_title: "Project Experience",
     project_subtitle: "Real-world implementations of technology-based solutions.",
     philosophy: [
-      { title: "Embedded C/C++", desc: "Low-level programming for performance optimization and memory management on MCUs.", icon: <Terminal className="w-6 h-6" />, color: "bg-slate-900" },
-      { title: "IoT Protocol", desc: "Implementation of MQTT, HTTP, and LoRaWAN for efficient and secure data communication.", icon: <Wifi className="w-6 h-6" />, color: "bg-blue-500" },
-      { title: "Circuit Design", desc: "PCB design and precision sensor integration for various industrial needs.", icon: <Zap className="w-6 h-6" />, color: "bg-amber-500" }
+      { title: "Embedded System", desc: "Low-level programming for performance optimization and memory management on MCUs.", icon: <Terminal className="w-6 h-6" />, color: "bg-slate-900" },
+      { title: "IoT Protocol", desc: "Implementation of MQTT, HTTP for efficient and secure data communication.", icon: <Wifi className="w-6 h-6" />, color: "bg-blue-500" },
+      { title: "IoT Design", desc: "IoT architecture design and sensor integration with controller and connectivity for various industrial needs.", icon: <Zap className="w-6 h-6" />, color: "bg-amber-500" }
     ],
     projects: [
-      { title: "Smart Agriculture Monitoring", year: "2024", client: "Undergraduate Thesis", category: "IoT Solution" },
-      { title: "Real-time Energy Monitoring", year: "2023", client: "Industrial Project", category: "System Integration" },
-      { title: "Automated Greenhouse Controller", year: "2023", client: "Internal Research", category: "Automation" }
+      { title: "Remote Monitoring System for PV Farm", year: "2023-Present", client: "Industrial Project", category: "IoT Solution for Renewable Energy" },
+      { title: "Thermal Body Scanner", year: "2020-2023", client: "Industrial Project", category: "IoT for Covid Prevention" },
+      { title: "Real-Time Monitoring of PM2.5 and CO2 Concentrations Based on Low-Cost Sensors in the Greater Bandung Air Basin", year: "2019", client: "Undergraduate Thesis", category: "IoT Solution, Environmental Monitoring" }
     ],
     certs: [
-      { title: "LoRaWAN implementation in WSN", org: "Scientific Publication", type: "Research" },
-      { title: "Cisco Certified Support Technician", org: "Networking", type: "Certification" }
+      { title: "Certified IoT BNSP", org: "BNSP Indonesia", type: "Certification" },
+      { title: "Practical IoT Concepts-Devices IoT Protocols & Servers", org: "Udemy", type: "Certificate of Completion" }
     ]
   },
   id: {
@@ -132,34 +139,36 @@ const i18n = {
     stat_4: "Sistem Operasi",
     about_title: "Keahlian & Filosofi",
     about_desc: "Berfokus pada pengembangan solusi end-to-end IoT yang handal, mulai dari desain sirkuit hingga integrasi data real-time untuk pengambilan keputusan yang lebih cerdas.",
-    edu_desc: "Fokus akademik pada Embedded Systems dan IoT. Aktif dalam riset Wireless Sensor Networks (WSN).",
+    edu_desc: "IPK: 3.88/4.00. Monitoring PM2.5 menggunakan perangkat IoT untuk tugas akhir.",
     project_title: "Pengalaman Proyek",
     project_subtitle: "Implementasi nyata dari solusi berbasis teknologi.",
     philosophy: [
-      { title: "Embedded C/C++", desc: "Pemrograman tingkat rendah untuk optimasi kinerja dan manajemen memori pada mikrokontroler.", icon: <Terminal className="w-6 h-6" />, color: "bg-slate-900" },
-      { title: "IoT Protocol", desc: "Implementasi MQTT, HTTP, dan LoRaWAN untuk komunikasi data yang efisien dan aman.", icon: <Wifi className="w-6 h-6" />, color: "bg-blue-500" },
-      { title: "Circuit Design", desc: "Perancangan PCB dan integrasi sensor presisi untuk berbagai kebutuhan industri.", icon: <Zap className="w-6 h-6" />, color: "bg-amber-500" }
+      { title: "Embedded System", desc: "Pemrograman pada controller seperti Python, Javascript, dan C/C++.", icon: <Terminal className="w-6 h-6" />, color: "bg-slate-900" },
+      { title: "IoT Protocol", desc: "Implementasi MQTT, HTTP untuk komunikasi data yang efisien dan aman.", icon: <Wifi className="w-6 h-6" />, color: "bg-blue-500" },
+      { title: "IoT Design", desc: "Perancangan Arsiteektur IoT serta integrasi sensor dengan controller serta connectivity untuk berbagai kebutuhan industri.", icon: <Zap className="w-6 h-6" />, color: "bg-amber-500" }
     ],
     projects: [
-      { title: "Sistem Pemantauan Pertanian Cerdas", year: "2024", client: "Skripsi S1", category: "Solusi IoT" },
-      { title: "Monitoring Energi Real-time", year: "2023", client: "Proyek Industri", category: "Integrasi Sistem" },
-      { title: "Kontroler Otomasi Greenhouse", year: "2023", client: "Riset Internal", category: "Otomasi" }
+      { title: "Remote Monitoring System Untuk PLTS", year: "2023-Sekarang", client: "Proyek Industri", category: "Solusi IoT untuk Energi Terbarukan" },
+      { title: "Thermal Body Scanner", year: "2020-2023", client: "Proyek Industri", category: "IoT untuk Pencegahan Covid" },
+      { title: "Pemantauan Konsentrasi PM2.5 dan CO2 Berbasis Low-Cost Sensor secara Real-Time di Cekungan Udara Bandung Raya", year: "2019", client: "Tugas Akhir", category: "Solusi IoT untuk Monitoring Lingkungan" }
     ],
     certs: [
-      { title: "Penerapan LoRaWAN pada WSN", org: "Publikasi Ilmiah", type: "Riset" },
-      { title: "Cisco Certified Support Technician", org: "Networking", type: "Sertifikasi" }
+      { title: "Sertifikasi IoT BNSP", org: "BNSP Indonesia", type: "Sertifikasi" },
+      { title: "Practical IoT Concepts-Devices IoT Protocols & Servers", org: "Udemy", type: "Sertifikat Penyelesaian" }
     ]
   }
 };
 
+type Lang = 'en' | 'id';
+
 export default function App() {
   // Set English ('en') as the default state
-  const [lang, setLang] = useState('en');
+  const [lang, setLang] = useState<Lang>('en');
   const [theme, setTheme] = useState('modernist');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isStyleOpen, setIsStyleOpen] = useState(false);
 
-  const t = i18n[lang];
+  const t = i18n[lang] ?? i18n.en;
 
   const getThemeClass = () => {
     switch(theme) {
@@ -264,7 +273,7 @@ export default function App() {
                 <a href="#projects" className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-sm font-bold hover:bg-green-600 transition-all shadow-xl shadow-slate-900/10 active:scale-95">
                   {t.hero_btn_1}
                 </a>
-                <a href="https://linkedin.com" target="_blank" className="px-8 py-4 border border-slate-200 rounded-2xl text-sm font-bold hover:bg-[#0077B5] hover:text-white hover:border-[#0077B5] transition-all flex items-center gap-2 active:scale-95">
+                <a href="https://www.linkedin.com/in/asharisyabani" target="_blank" className="px-8 py-4 border border-slate-200 rounded-2xl text-sm font-bold hover:bg-[#0077B5] hover:text-white hover:border-[#0077B5] transition-all flex items-center gap-2 active:scale-95">
                   <LinkedinIcon /> LinkedIn Profile
                 </a>
               </div>
@@ -282,7 +291,7 @@ export default function App() {
                 <div className="relative animate-float">
                   <div className="p-4 bg-white border border-slate-100 shadow-[0_35px_60px_-15px_rgba(0,0,0,0.3)] rounded-[3.5rem] max-w-[420px] mx-auto transition-all duration-500 group-hover:shadow-green-600/20 group-hover:border-green-200">
                     <img 
-                      src="https://api.dicebear.com/7.x/avataaars/svg?seed=Ashari&backgroundColor=b6e3f4" 
+                      src="/ashari.jpg"
                       alt="Avatar" 
                       className="w-full aspect-square object-cover rounded-[3rem] bg-slate-50 transition-transform duration-700 group-hover:scale-105"
                     />
@@ -293,8 +302,8 @@ export default function App() {
                       <Cpu className="w-5 h-5" />
                     </div>
                     <div className="text-left">
-                      <p className="text-[10px] font-black uppercase text-slate-400 leading-none">IoT Specialist</p>
-                      <p className="text-sm font-bold text-slate-900 mt-1">Embedded System</p>
+                      <p className="text-[10px] font-black uppercase text-slate-400 leading-none">IoT Engineer</p>
+                      <p className="text-sm font-bold text-slate-900 mt-1">Solution & Development</p>
                     </div>
                   </div>
                 </div>
@@ -311,10 +320,10 @@ export default function App() {
       <section className="py-20 border-y border-slate-100 bg-slate-50/50">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12">
           {[
-            { label: t.stat_1, val: "IoT" },
-            { label: t.stat_2, val: "STM32" },
-            { label: t.stat_3, val: "MQTT" },
-            { label: t.stat_4, val: "RTOS" }
+            { label: t.stat_1, val: "IoT, Laravel" },
+            { label: t.stat_2, val: "Industrial Mini PC" },
+            { label: t.stat_3, val: "HTTP, API, MQTT, Modbus" },
+            { label: t.stat_4, val: "Linux" }
           ].map((stat, i) => (
             <Reveal key={i} delay={i * 0.1}>
               <div className="text-center md:text-left">
@@ -417,9 +426,9 @@ export default function App() {
             <Reveal direction="right">
               <div className="relative pl-12 group">
                 <div className="absolute left-[-9px] top-1 w-4 h-4 rounded-full bg-green-600 border-4 border-white shadow-sm transition-transform group-hover:scale-150"></div>
-                <span className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em] mb-2 block">2020 — 2024</span>
-                <h3 className="text-2xl font-bold text-slate-900">Computer Engineering</h3>
-                <p className="text-slate-500 mt-2 font-medium">Universitas Islam Indonesia</p>
+                <span className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em] mb-2 block">2015 — 2019</span>
+                <h3 className="text-2xl font-bold text-slate-900">Engineering Physics</h3>
+                <p className="text-slate-500 mt-2 font-medium">Telkom University</p>
                 <p className="text-sm text-slate-400 mt-4 max-w-lg leading-relaxed">{t.edu_desc}</p>
               </div>
             </Reveal>
@@ -432,8 +441,8 @@ export default function App() {
         <Reveal direction="down">
           <div className="font-black text-3xl mb-8 tracking-tighter">ASHARI<span className="text-green-600">.</span></div>
           <div className="flex justify-center gap-10 mb-12">
-            <a href="#" className="text-slate-400 hover:text-[#0077B5] transition-all hover:scale-125"><LinkedinIcon /></a>
-            <a href="#" className="text-slate-400 hover:text-slate-900 transition-all hover:scale-125"><GithubIcon /></a>
+            <a href="https://www.linkedin.com/in/asharisyabani" className="text-slate-400 hover:text-[#0077B5] transition-all hover:scale-125"><LinkedinIcon /></a>
+            <a href="https://github.com/ashariprezs" className="text-slate-400 hover:text-slate-900 transition-all hover:scale-125"><GithubIcon /></a>
             <a href="#" className="text-slate-400 hover:text-green-600 transition-all hover:scale-125"><Globe className="w-5 h-5" /></a>
           </div>
           <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-300">Built with Passion for Technology</p>
