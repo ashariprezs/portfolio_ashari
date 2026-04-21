@@ -20,7 +20,12 @@ import {
   Mail,
   User,
   Code2,
-  Share2
+  Share2,
+  MessageCircle, 
+  Send, 
+  Bot, 
+  Paperclip, 
+  Smile
 } from 'lucide-react';
 
 // Ikon Brand Kustom menggunakan SVG agar tetap presisi tanpa library tambahan
@@ -167,6 +172,61 @@ export default function App() {
   const [theme, setTheme] = useState('modernist');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isStyleOpen, setIsStyleOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [message, setMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState([
+    {
+      id: 1,
+      type: 'bot',
+      text: 'Halo! 👋 Terima kasih sudah berkunjung ke portfolio saya. Ada yang bisa saya bantu?',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
+  ]);
+  const [isTyping, setIsTyping] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll ke pesan terbawah setiap ada pesan baru
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatHistory, isTyping]);
+
+  const handleSendMessage = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+
+    const newUserMessage = {
+      id: Date.now(),
+      type: 'user',
+      text: message,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setChatHistory(prev => [...prev, newUserMessage]);
+    setMessage('');
+    
+    // Simulasi balasan bot
+    setIsTyping(true);
+    setTimeout(() => {
+      setIsTyping(false);
+      const botResponse = {
+        id: Date.now() + 1,
+        type: 'bot',
+        text: getBotResponse(message),
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setChatHistory(prev => [...prev, botResponse]);
+    }, 1500);
+  };
+
+  const getBotResponse = (input: string): string => {
+    const text = input.toLowerCase();
+    if (text.includes('halo') || text.includes('hi')) return 'Halo juga! Senang bertemu Anda.';
+    if (text.includes('proyek') || text.includes('kerja')) return 'Saya telah mengerjakan beberapa proyek IoT menggunakan Python, JavaScript, dan C/C++. Anda bisa melihatnya di bagian Portfolio!';
+    if (text.includes('kontak') || text.includes('email')) return 'Anda bisa menghubungi saya via email di syabani.ashari@gmail.com atau melalui LinkedIn.';
+    return 'Terima kasih atas pesannya! Saya akan segera merespon secara manual jika ini adalah pesan asli.';
+  };
 
   const t = i18n[lang] ?? i18n.en;
 
@@ -226,6 +286,107 @@ export default function App() {
           className="w-12 h-12 bg-white shadow-xl border border-slate-200 rounded-full flex items-center justify-center hover:bg-slate-50 transition-all group"
         >
           <Palette className={`w-5 h-5 text-slate-400 group-hover:text-green-600 transition-colors ${isStyleOpen ? 'text-green-600' : ''}`} />
+        </button>
+      </div>
+
+      {/* Chat Widget Container */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        
+        {/* Chat Window */}
+        {isOpen && (
+          <div className="mb-4 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+            
+            {/* Header */}
+            <div className="bg-indigo-600 p-4 flex justify-between items-center text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-indigo-400 flex items-center justify-center border-2 border-indigo-300">
+                  <User size={20} />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Ashari's Assistant</h3>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    <span className="text-xs text-indigo-100">Online</span>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsOpen(false)}
+                className="hover:bg-indigo-500 p-1.5 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Messages Area */}
+            <div className="flex-1 h-96 overflow-y-auto p-4 space-y-4 bg-gray-50">
+              {chatHistory.map((chat) => (
+                <div 
+                  key={chat.id} 
+                  className={`flex ${chat.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className={`max-w-[80%] flex flex-col ${chat.type === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div className={`p-3 rounded-2xl text-sm ${
+                      chat.type === 'user' 
+                        ? 'bg-indigo-600 text-white rounded-tr-none' 
+                        : 'bg-white text-gray-800 shadow-sm border border-gray-200 rounded-tl-none'
+                    }`}>
+                      {chat.text}
+                    </div>
+                    <span className="text-[10px] text-gray-400 mt-1 px-1">{chat.time}</span>
+                  </div>
+                </div>
+              ))}
+              
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-gray-200 flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"></span>
+                    <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                    <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Input Area */}
+            <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-gray-100">
+              <div className="relative flex items-center gap-2">
+                <input
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Ketik pesan..."
+                  className="w-full pl-3 pr-10 py-2.5 bg-gray-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                />
+                <button 
+                  type="submit"
+                  disabled={!message.trim()}
+                  className="absolute right-1 p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                >
+                  <Send size={18} />
+                </button>
+              </div>
+              <div className="flex justify-between items-center mt-3 px-1 text-gray-400">
+                <div className="flex gap-3">
+                  <button type="button" className="hover:text-indigo-600 transition-colors"><Paperclip size={16}/></button>
+                  <button type="button" className="hover:text-indigo-600 transition-colors"><Smile size={16}/></button>
+                </div>
+                <p className="text-[10px]">Powered by Gemini</p>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Toggle Button */}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+            isOpen ? 'bg-gray-800 text-white rotate-90' : 'bg-indigo-600 text-white'
+          }`}
+        >
+          {isOpen ? <X size={28} /> : <MessageCircle size={28} />}
         </button>
       </div>
 
