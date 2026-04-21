@@ -167,6 +167,13 @@ const i18n = {
 type Lang = 'en' | 'id';
 
 export default function App() {
+  type ChatMessage = {
+    id: string | number;
+    type: 'user' | 'bot';
+    text: string;
+    time: string;
+  };
+
   // Set English ('en') as the default state
   const [lang, setLang] = useState<Lang>('en');
   const [theme, setTheme] = useState('modernist');
@@ -174,15 +181,16 @@ export default function App() {
   const [isStyleOpen, setIsStyleOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
-  const [chatHistory, setChatHistory] = useState([
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
     {
-      id: 1,
+      id: '1', // ubah jadi string biar konsisten
       type: 'bot',
-      text: 'Halo! 👋 Terima kasih sudah berkunjung ke portfolio saya. Ada yang bisa saya bantu?',
+      text: 'Halo! 👋 Ada yang bisa saya bantu? Pesan Anda akan langsung terkirim ke Telegram saya.',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [lastUpdateId, setLastUpdateId] = useState(0);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   // Auto-scroll ke pesan terbawah setiap ada pesan baru
@@ -192,33 +200,96 @@ export default function App() {
     }
   }, [chatHistory, isTyping]);
 
-  const handleSendMessage = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!message.trim()) return;
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
 
-    const newUserMessage = {
+    if (isOpen) {
+      interval = setInterval(() => {
+        checkForTelegramReplies();
+      }, 3000);
+    }
+
+    return () => clearInterval(interval);
+  }, [isOpen, lastUpdateId]);
+
+  const checkForTelegramReplies = async () => {
+    try {
+      const res = await fetch(`/api/telegram/updates?offset=${lastUpdateId + 1}`);
+      const data = await res.json();
+
+      if (data.ok && data.result?.length > 0) {
+        data.result.forEach((update: any) => {
+          if (update.message?.text) {
+            const replyMessage: ChatMessage = {
+              id: `tg-${update.update_id}`,
+              type: 'bot',
+              text: update.message.text,
+              time: new Date(update.message.date * 1000).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            };
+
+            setChatHistory((prev) => [...prev, replyMessage]);
+          }
+
+          if (update.update_id) {
+            setLastUpdateId(update.update_id);
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Error ambil update:', err);
+    }
+  };
+
+  const sendToTelegram = async (text: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/telegram/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+
+      const data = await res.json();
+      return data.success;
+    } catch {
+      return false;
+    }
+  };
+
+
+  const handleSendMessage = async(e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const userText = message.trim();
+    if (!userText) return;
+
+    const newUserMessage: ChatMessage = {
       id: Date.now(),
       type: 'user',
-      text: message,
+      text: userText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
     setChatHistory(prev => [...prev, newUserMessage]);
     setMessage('');
-    
-    // Simulasi balasan bot
+
     setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
-      const botResponse = {
-        id: Date.now() + 1,
+    const success = await sendToTelegram(userText);
+    setIsTyping(false);
+    
+    if (!success) {
+      setChatHistory(prev => [...prev, {
+        id: `err-${Date.now()}`,
         type: 'bot',
-        text: getBotResponse(message),
+        text: 'Gagal mengirim pesan. Periksa konfigurasi .env Anda.',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setChatHistory(prev => [...prev, botResponse]);
-    }, 1500);
+      }]);
+    }
   };
+
+  
+
 
   const getBotResponse = (input: string): string => {
     const text = input.toLowerCase();
@@ -291,99 +362,67 @@ export default function App() {
 
       {/* Chat Widget Container */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
-        
-        {/* Chat Window */}
         {isOpen && (
-          <div className="mb-4 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
-            
+          <div className="mb-4 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
             {/* Header */}
             <div className="bg-indigo-600 p-4 flex justify-between items-center text-white">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-400 flex items-center justify-center border-2 border-indigo-300">
-                  <User size={20} />
+                <div className="w-10 h-10 rounded-full bg-indigo-400 flex items-center justify-center border-2 border-indigo-300 font-bold">
+                  AS
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">Ashari's Assistant</h3>
+                  <h3 className="font-semibold text-sm">Chat with Ashari</h3>
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                    <span className="text-xs text-indigo-100">Online</span>
+                    <span className="text-xs text-indigo-100">Dua Arah</span>
                   </div>
                 </div>
               </div>
-              <button 
-                onClick={() => setIsOpen(false)}
-                className="hover:bg-indigo-500 p-1.5 rounded-lg transition-colors"
-              >
+              <button onClick={() => setIsOpen(false)} className="hover:bg-indigo-500 p-1.5 rounded-lg transition-colors">
                 <X size={20} />
               </button>
             </div>
 
-            {/* Messages Area */}
-            <div className="flex-1 h-96 overflow-y-auto p-4 space-y-4 bg-gray-50">
+            {/* Chat History */}
+            <div className="flex-1 h-80 overflow-y-auto p-4 space-y-4 bg-slate-50">
               {chatHistory.map((chat) => (
-                <div 
-                  key={chat.id} 
-                  className={`flex ${chat.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`max-w-[80%] flex flex-col ${chat.type === 'user' ? 'items-end' : 'items-start'}`}>
+                <div key={chat.id} className={`flex ${chat.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] flex flex-col ${chat.type === 'user' ? 'items-end' : 'items-start'}`}>
                     <div className={`p-3 rounded-2xl text-sm ${
-                      chat.type === 'user' 
-                        ? 'bg-indigo-600 text-white rounded-tr-none' 
-                        : 'bg-white text-gray-800 shadow-sm border border-gray-200 rounded-tl-none'
+                      chat.type === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-800 shadow-sm border border-slate-200 rounded-tl-none'
                     }`}>
                       {chat.text}
                     </div>
-                    <span className="text-[10px] text-gray-400 mt-1 px-1">{chat.time}</span>
+                    <span className="text-[10px] text-slate-400 mt-1 px-1">{chat.time}</span>
                   </div>
                 </div>
               ))}
-              
-              {isTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-gray-200 flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce"></span>
-                    <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                    <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-                  </div>
-                </div>
-              )}
+              {isTyping && <div className="text-[10px] text-slate-400 px-2 italic">Mengirim...</div>}
               <div ref={chatEndRef} />
             </div>
 
-            {/* Input Area */}
-            <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-gray-100">
+            {/* Input */}
+            <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-100">
               <div className="relative flex items-center gap-2">
                 <input
                   type="text"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Ketik pesan..."
-                  className="w-full pl-3 pr-10 py-2.5 bg-gray-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                  className="w-full pl-3 pr-10 py-2.5 bg-slate-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
-                <button 
-                  type="submit"
-                  disabled={!message.trim()}
-                  className="absolute right-1 p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
-                >
+                <button type="submit" disabled={!message.trim()} className="absolute right-1 p-1.5 text-indigo-600">
                   <Send size={18} />
                 </button>
-              </div>
-              <div className="flex justify-between items-center mt-3 px-1 text-gray-400">
-                <div className="flex gap-3">
-                  <button type="button" className="hover:text-indigo-600 transition-colors"><Paperclip size={16}/></button>
-                  <button type="button" className="hover:text-indigo-600 transition-colors"><Smile size={16}/></button>
-                </div>
-                <p className="text-[10px]">Powered by Gemini</p>
               </div>
             </form>
           </div>
         )}
 
-        {/* Toggle Button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 ${
-            isOpen ? 'bg-gray-800 text-white rotate-90' : 'bg-indigo-600 text-white'
+          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all ${
+            isOpen ? 'bg-slate-800 text-white' : 'bg-indigo-600 text-white'
           }`}
         >
           {isOpen ? <X size={28} /> : <MessageCircle size={28} />}
