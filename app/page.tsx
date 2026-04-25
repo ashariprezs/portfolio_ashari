@@ -25,7 +25,10 @@ import {
   Send, 
   Bot, 
   Paperclip, 
-  Smile
+  Smile,
+  Sparkles,
+  RefreshCw,
+  Search
 } from 'lucide-react';
 
 // Ikon Brand Kustom menggunakan SVG agar tetap presisi tanpa library tambahan
@@ -100,12 +103,22 @@ const Reveal = ({ children, delay = 0, direction = 'up' }: RevealProps) => {
 const i18n = {
   en: {
     nav_about: "About Me",
+    nav_ai: "Ask Ashari's AI",
     nav_exp: "Experience",
     nav_cert: "Certifications",
     nav_edu: "Education",
     hero_hello: "Hi There, I'm",
     hero_desc: "IoT Engineer specializing in embedded systems development, hardware-software integration, and sensor network optimization for future industrial solutions.",
-    hero_btn_1: "Explore Portfolio",
+    hero_btn_1: "Ask Ashari's AI",
+    hero_btn_2: "Explore Portfolio",
+    ai_title: "Ask My Virtual AI",
+    ai_subtitle: "Instant answers about my background, skills, and projects.",
+    ai_placeholder: "Ask about Ashari's experience...",
+    ai_suggest_1: "What are your core IoT skills?",
+    ai_suggest_2: "Tell me about the PV Farm project",
+    ai_suggest_3: "What is your educational background?",
+    ai_hint: "AI can make mistakes in answering your questions.",
+    ai_telegram: "Contact Ashari Directly via Telegram",
     stat_1: "Core Specialty",
     stat_2: "Main Controller",
     stat_3: "Communication",
@@ -132,12 +145,22 @@ const i18n = {
   },
   id: {
     nav_about: "Tentang Saya",
+    nav_ai: "Tanya Ashari AI",
     nav_exp: "Pengalaman",
     nav_cert: "Sertifikasi",
     nav_edu: "Pendidikan",
     hero_hello: "Halo, Saya",
     hero_desc: "IoT Engineer dengan spesialisasi dalam pengembangan sistem embedded, integrasi hardware-software, dan optimasi jaringan sensor untuk solusi industri masa depan.",
-    hero_btn_1: "Jelajahi Portofolio",
+    hero_btn_1: "Tanya Ashari AI",
+    hero_btn_2: "Jelajahi Portofolio",
+    ai_title: "Tanya AI Virtual Saya",
+    ai_subtitle: "Jawaban instan mengenai latar belakang, keahlian, dan proyek saya.",
+    ai_placeholder: "Tanya tentang pengalaman Ashari...",
+    ai_suggest_1: "Apa keahlian IoT utama Anda?",
+    ai_suggest_2: "Ceritakan tentang proyek PLTS",
+    ai_suggest_3: "Apa latar belakang pendidikan Anda?",
+    ai_hint: "AI dapat melakukan kesalahan dalam menjawab pertanyaan Anda.",
+    ai_telegram: "Hubungi Ashari Langsung via Telegram",
     stat_1: "Keahlian Utama",
     stat_2: "Kontroler Utama",
     stat_3: "Komunikasi",
@@ -174,6 +197,11 @@ export default function App() {
     time: string;
   };
 
+  type Message = {
+    role: string;
+    text: string;
+  };
+
   // Set English ('en') as the default state
   const [lang, setLang] = useState<Lang>('en');
   const [theme, setTheme] = useState('modernist');
@@ -193,6 +221,13 @@ export default function App() {
   const [lastUpdateId, setLastUpdateId] = useState(0);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
+  // AI Chat State
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiHistory, setAiHistory] = useState<Message[]>([]);
+  const aiScrollRef = useRef<HTMLDivElement | null>(null);
+
   // Auto-scroll ke pesan terbawah setiap ada pesan baru
   useEffect(() => {
     if (chatEndRef.current) {
@@ -211,6 +246,12 @@ export default function App() {
 
     return () => clearInterval(interval);
   }, [isOpen, lastUpdateId]);
+
+  useEffect(() => {
+    if (aiScrollRef.current) {
+      aiScrollRef.current.scrollTo({ top: aiScrollRef.current.scrollHeight, behavior: 'smooth' });
+    }
+  }, [aiHistory, isAiLoading]);
 
   const checkForTelegramReplies = async () => {
     try {
@@ -288,16 +329,59 @@ export default function App() {
     }
   };
 
+  // --- AI Integration Logic ---
+  const handleAiSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (e) e.preventDefault();
+    handleAiAsk();
+  }
   
+  const handleAiAsk = async (customQuery?: string) => {
+    const queryText = customQuery || aiQuery.trim();
+    if (!queryText || isAiLoading) return;
 
+    setAiQuery('');
+    setIsAiLoading(true);
+    setAiResponse(null);
 
-  const getBotResponse = (input: string): string => {
-    const text = input.toLowerCase();
-    if (text.includes('halo') || text.includes('hi')) return 'Halo juga! Senang bertemu Anda.';
-    if (text.includes('proyek') || text.includes('kerja')) return 'Saya telah mengerjakan beberapa proyek IoT menggunakan Python, JavaScript, dan C/C++. Anda bisa melihatnya di bagian Portfolio!';
-    if (text.includes('kontak') || text.includes('email')) return 'Anda bisa menghubungi saya via email di syabani.ashari@gmail.com atau melalui LinkedIn.';
-    return 'Terima kasih atas pesannya! Saya akan segera merespon secara manual jika ini adalah pesan asli.';
+    // Add user message to history
+    const userMsg = { role: 'user', text: queryText };
+    setAiHistory(prev => [...prev, userMsg]);
+
+    try {
+      // Call our API endpoint instead of directly calling Gemini
+      const response = await fetch('/api/chat/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: queryText })
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.response) {
+        const botMsg = { role: 'bot', text: data.response };
+        setAiHistory(prev => [...prev, botMsg]);
+        setAiResponse(data.response);
+      } else {
+        const errorMsg = { 
+          role: 'bot', 
+          text: data.error || "I'm sorry, I couldn't process that right now." 
+        };
+        setAiHistory(prev => [...prev, errorMsg]);
+        setAiResponse(errorMsg.text);
+      }
+    } catch (error) {
+      const errorMsg = { 
+        role: 'bot', 
+        text: "Technical error. Please try again later." 
+      };
+      setAiHistory(prev => [...prev, errorMsg]);
+      setAiResponse(errorMsg.text);
+      console.error('Error calling AI API:', error);
+    } finally {
+      setIsAiLoading(false);
+    }
   };
+
 
   const t = i18n[lang] ?? i18n.en;
 
@@ -317,6 +401,9 @@ export default function App() {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
           50% { transform: translateY(-20px) rotate(2deg); }
         }
+        .ai-gradient {
+          background: linear-gradient(135deg, #6366f1, #3b82f6); /* Example gradient for Gemini-like branding */
+        }
         @keyframes slow-spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
@@ -333,6 +420,19 @@ export default function App() {
         .reveal-card:hover {
            transform: translateY(-8px) scale(1.01);
            box-shadow: 0 30px 60px -12px rgba(0,0,0,0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #e2e8f0;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #cbd5e1;
         }
       `}} />
 
@@ -363,7 +463,7 @@ export default function App() {
       {/* Chat Widget Container */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
         {isOpen && (
-          <div className="mb-4 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+          <div className="mb-4 w-80 sm:w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
             {/* Header */}
             <div className="bg-indigo-600 p-4 flex justify-between items-center text-white">
               <div className="flex items-center gap-3">
@@ -384,21 +484,23 @@ export default function App() {
             </div>
 
             {/* Chat History */}
-            <div className="flex-1 h-80 overflow-y-auto p-4 space-y-4 bg-slate-50">
-              {chatHistory.map((chat) => (
-                <div key={chat.id} className={`flex ${chat.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] flex flex-col ${chat.type === 'user' ? 'items-end' : 'items-start'}`}>
-                    <div className={`p-3 rounded-2xl text-sm ${
-                      chat.type === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-800 shadow-sm border border-slate-200 rounded-tl-none'
-                    }`}>
-                      {chat.text}
+            <div className="flex-1 min-h-0 max-h-full overflow-y-auto p-4 space-y-4 bg-slate-50">
+              <div className="space-y-4">
+                {chatHistory.map((chat) => (
+                  <div key={chat.id} className={`flex ${chat.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] flex flex-col ${chat.type === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div className={`p-3 rounded-2xl text-sm ${
+                        chat.type === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-800 shadow-sm border border-slate-200 rounded-tl-none'
+                      }`}>
+                        {chat.text}
+                      </div>
+                      <span className="text-[10px] text-slate-400 mt-1 px-1">{chat.time}</span>
                     </div>
-                    <span className="text-[10px] text-slate-400 mt-1 px-1">{chat.time}</span>
                   </div>
-                </div>
-              ))}
-              {isTyping && <div className="text-[10px] text-slate-400 px-2 italic">Mengirim...</div>}
-              <div ref={chatEndRef} />
+                ))}
+                {isTyping && <div className="text-[10px] text-slate-400 px-2 italic">Mengirim...</div>}
+                <div ref={chatEndRef} />
+              </div>
             </div>
 
             {/* Input */}
@@ -436,6 +538,7 @@ export default function App() {
           
           <div className="hidden md:flex gap-8 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
             <a href="#about" className="hover:text-slate-900 transition-colors">{t.nav_about}</a>
+            <a href="#ai" className="hover:text-slate-900 transition-colors">{t.nav_ai}</a>
             <a href="#projects" className="hover:text-slate-900 transition-colors">{t.nav_exp}</a>
             <a href="#certifications" className="hover:text-slate-900 transition-colors">{t.nav_cert}</a>
             <a href="#education" className="hover:text-slate-900 transition-colors">{t.nav_edu}</a>
@@ -470,8 +573,11 @@ export default function App() {
             </Reveal>
             <Reveal direction="up" delay={0.4}>
               <div className="flex flex-wrap gap-4">
-                <a href="#projects" className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-sm font-bold hover:bg-green-600 transition-all shadow-xl shadow-slate-900/10 active:scale-95">
+                <a href="#ai" className="px-8 py-4 bg-indigo-600 text-white rounded-2xl text-sm font-bold hover:bg-[#4796E3] transition-all shadow-xl shadow-indigo-600/10 active:scale-95">
                   {t.hero_btn_1}
+                </a>
+                <a href="#projects" className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-sm font-bold hover:bg-green-600 transition-all shadow-xl shadow-slate-900/10 active:scale-95">
+                  {t.hero_btn_2}
                 </a>
                 <a href="https://www.linkedin.com/in/asharisyabani" target="_blank" className="px-8 py-4 border border-slate-200 rounded-2xl text-sm font-bold hover:bg-[#0077B5] hover:text-white hover:border-[#0077B5] transition-all flex items-center gap-2 active:scale-95">
                   <LinkedinIcon /> LinkedIn Profile
@@ -516,8 +622,103 @@ export default function App() {
         </div>
       </header>
 
+      {/* --- Ask My Virtual AI Section (Gemini Style) --- */}
+      <section id="ai" className="py-32 px-6">
+        <div className="max-w-7xl mx-auto flex flex-col items-center text-center">
+          <Reveal>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-black tracking-tight mb-3">{t.ai_title}</h2>
+              <p className="text-slate-500">{t.ai_subtitle}</p>
+            </div>
+          </Reveal>
+
+          <div id="ai-chat-area" className="w-full max-w-6xl h-[600px] bg-white border border-slate-200 rounded-[2.5rem] shadow-2xl shadow-slate-200/50 flex flex-col overflow-hidden">
+            {/* Chat Area */}
+            <div id="ai-scroll-area" ref={aiScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth custom-scrollbar p-8 md:p-12"> 
+              <div className="max-w-full mx-auto w-full space-y-12 pb-10"> {/* Wrapper untuk memberi jeda dan membatasi lebar teks agar tidak menabrak border */}
+                {aiHistory.length === 0 ? ( // Ini adalah div untuk tampilan kosong
+                  <div className="flex flex-col items-center justify-center text-center py-20"> {/* Menghapus h-full */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full px-4"> 
+                      {[t.ai_suggest_1, t.ai_suggest_2, t.ai_suggest_3].map((suggest, idx) => (
+                        <button 
+                          key={idx}
+                          onClick={() => handleAiAsk(suggest)}
+                          className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-semibold text-slate-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all text-left flex flex-col justify-between gap-4 h-full"
+                        >
+                          {suggest}
+                          <ArrowUpRight size={14} className="opacity-50" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  aiHistory.map((msg, i) => (
+                    <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`flex gap-4 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${msg.role === 'user' ? 'bg-slate-100 text-slate-600' : 'ai-gradient text-white shadow-lg'}`}>
+                          {msg.role === 'user' ? <User size={18} /> : <Sparkles size={18} />}
+                        </div>
+                        <div className={`p-4 md:p-6 rounded-[2rem] text-sm leading-relaxed ${msg.role === 'user' ? 'bg-slate-900 text-white rounded-tr-none text-right' : 'bg-slate-50 text-slate-800 rounded-tl-none border border-slate-100 shadow-sm text-left'}`}>
+                          {msg.text}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isAiLoading && (
+                  <div className="flex gap-4">
+                    <div className="w-10 h-10 rounded-full ai-gradient animate-pulse flex items-center justify-center text-white">
+                      <Sparkles size={18} />
+                    </div>
+                    <div className="bg-slate-50 border border-slate-100 p-6 rounded-[2rem] rounded-tl-none w-24 flex items-center justify-center gap-1">
+                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{animationDelay:'0ms'}}></div>
+                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{animationDelay:'150ms'}}></div>
+                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{animationDelay:'300ms'}}></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Telegram CTA Button - Tampil hanya jika sudah ada riwayat chat */}
+                {aiHistory.length > 0 && !isAiLoading && (
+                  <div className="flex justify-center mt-8">
+                    <button 
+                      onClick={() => setIsOpen(true)}
+                      className="group flex items-center gap-3 px-6 py-3 bg-indigo-600 text-white rounded-2xl shadow-lg hover:bg-indigo-700 transition-all active:scale-95"
+                    >
+                      <MessageCircle size={20} className="group-hover:scale-110 transition-transform" />
+                      <span className="font-semibold text-sm">{t.ai_telegram}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Input Area */}
+            <div className="p-4 md:p-8 bg-white border-t border-slate-100"> {/* Menambah padding agar area input lebih bernapas */}
+              <form onSubmit={handleAiSubmit} className="flex items-center gap-3 w-full">
+                <input 
+                  type="text"
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  placeholder={t.ai_placeholder}
+                  className="flex-1 pl-6 pr-6 py-4 bg-white border border-slate-200 rounded-2xl text-sm shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-400"
+                />
+                <button 
+                  type="submit"
+                  disabled={!aiQuery.trim() || isAiLoading}
+                  className="w-12 h-12 flex-shrink-0 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-blue-600 disabled:opacity-50 disabled:bg-slate-400 transition-all shadow-lg shadow-slate-900/10"
+                >
+                  <Send size={18} />
+                </button>
+              </form>
+              <p className="text-[10px] text-center text-slate-400 mt-4 font-bold uppercase tracking-widest"><i>{t.ai_hint}</i></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Stats Section */}
-      <section className="py-20 border-y border-slate-100 bg-slate-50/50">
+      <section className="py-32 px-6 border-slate-100 bg-slate-50/50">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12">
           {[
             { label: t.stat_1, val: "IoT, Laravel" },
